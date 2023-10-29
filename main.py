@@ -11,14 +11,15 @@ import pysam
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("-f", "--file", dest='BAM')
+    parser.add_argument("-i", "--index", dest='INDEX')
     args = parser.parse_args()
 
     return args
 
 
-def read_bam(file_name):
+def read_bam(file_name, index_file):
     count_mismatches = 0
-    bam_file = pysam.AlignmentFile(file_name, "rb")
+    bam_file = pysam.AlignmentFile(file_name, "rb", index_filename=index_file)
     # print(bam_file)
 
     print(bam_file.references)
@@ -118,11 +119,12 @@ def get_strand(read):
 def main():
     print(parse_args())
     bam_file = parse_args().BAM
+    index_file = parse_args().INDEX
     if not os.path.exists(bam_file):
         raise OSError("Could not find {}.".format(bam_file))  # doesnt work yet
 
     # with pysam.AlignmentFile(bam_file, "r") as bam:
-    read_bam(bam_file)
+    read_bam(bam_file, index_file)
 
 
 if __name__ == '__main__':
