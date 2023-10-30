@@ -3,18 +3,20 @@ import os
 
 import pysam
 
-
 # Press Umschalt+F10 to execute it or replace it with your code.
 # Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
+
+global args
 
 
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("-f", "--file", dest='BAM')
     parser.add_argument("-i", "--index", dest='INDEX')
+    parser.add_argument("-r", "--reference", dest='REF')
+    global args
     args = parser.parse_args()
 
-    return args
 
 
 def read_bam(file_name, index_file):
@@ -35,8 +37,28 @@ def read_bam(file_name, index_file):
         chromosome = read.reference_name
         if no_mismatches == 0:
             continue
-        if no_mismatches == 1:
-            # print("start-pos before: ", start_pos)
+        # if no_mismatches == 1:
+        # print("start-pos before: ", start_pos)
+        # count_mismatches += 1
+        # if 'I' in cigar_string:
+        #    mismatch_type = "Insertion"
+        #    end_pos, start_pos = get_in_del_pos(cigar_tuples, start_pos)
+        # elif 'D' in cigar_string:
+        #    mismatch_type = "Deletion"
+        #    end_pos, start_pos = get_in_del_pos(cigar_tuples, start_pos)
+        # elif 'M' in cigar_string:
+
+        # elif no_mismatches == 2:
+        # count_mismatches += 2
+        # end_pos = start_pos + 2
+        # if 'I' in cigar_string:
+        #    mismatch_type = "Insertion"
+        #    # print(cigar_tuples[0])
+        # elif 'D' in cigar_string:
+        #    mismatch_type = "Deletion"
+        #    # print(cigar_tuples[0])
+
+        for mismatch in range(no_mismatches):
             count_mismatches += 1
             if 'I' in cigar_string:
                 mismatch_type = "Insertion"
@@ -44,26 +66,26 @@ def read_bam(file_name, index_file):
             elif 'D' in cigar_string:
                 mismatch_type = "Deletion"
                 end_pos, start_pos = get_in_del_pos(cigar_tuples, start_pos)
-        elif no_mismatches == 2:
-            count_mismatches += 2
-            end_pos = start_pos + 2
-            if 'I' in cigar_string:
-                mismatch_type = "Insertion"
-                # print(cigar_tuples[0])
-            elif 'D' in cigar_string:
-                mismatch_type = "Deletion"
-                # print(cigar_tuples[0])
+            print(chromosome,
+                  start_pos,
+                  end_pos,
+                  # no_mismatches,
+                  mismatch_type,
+                  # read.cigarstring,
+                  # read.cigartuples,
+                  strand,
+                  sep='\t')
         # print("start-pos after: ", start_pos)
         # if 'I' in cigar_string:
-        print(chromosome,
-              start_pos,
-              end_pos,
-              # no_mismatches,
-              mismatch_type,
-              # read.cigarstring,
-              # read.cigartuples,
-              strand,
-              sep='\t')
+        # print(chromosome,
+        #      start_pos,
+        #      end_pos,
+        #      # no_mismatches,
+        #      mismatch_type,
+        #      # read.cigarstring,
+        #      # read.cigartuples,
+        #      strand,
+        #      sep='\t')
         # going through cigartuple if mismatch is deletion or insertion
         # print(start_pos)
         # for x in range(len(cigar_tuples)):
@@ -78,7 +100,7 @@ def read_bam(file_name, index_file):
     # print(read.cigarstring)
     # print(read.get_tags(with_value_type=True))
     # print(0 in read.get_tag(tag="nM", with_value_type=True))
-    print("total mismatches:", count_mismatches) # different number to grep Befehl
+    print("total mismatches:", count_mismatches)  # different number to grep Befehl
     # bam_file.close()
 
 
@@ -116,10 +138,12 @@ def get_strand(read):
     return strand
 
 
-def main():
-    print(parse_args())
-    bam_file = parse_args().BAM
-    index_file = parse_args().INDEX
+def mismatch_finder():
+    parse_args()
+    global args
+    print("args ", args)
+    bam_file = args.BAM
+    index_file = args.INDEX
     if not os.path.exists(bam_file):
         raise OSError("Could not find {}.".format(bam_file))  # doesnt work yet
 
@@ -128,4 +152,4 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    mismatch_finder()
