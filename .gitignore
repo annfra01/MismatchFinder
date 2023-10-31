@@ -1,3 +1,4 @@
 *.idea
 *.bam
 *.bai
+__pycache__/
