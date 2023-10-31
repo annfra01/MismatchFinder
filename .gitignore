@@ -2,3 +2,4 @@
 *.bam
 *.bai
 __pycache__/
+*.bed
