@@ -3,11 +3,15 @@ import os
 import pandas
 import pysam
 from GenomicRange import GenomicRange
+from Mismatches import Mismatches
 
 # Press Umschalt+F10 to execute it or replace it with your code.
 # Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
 
 global args
+
+""" get arguments from command line
+"""
 
 
 def parse_args():
@@ -19,11 +23,9 @@ def parse_args():
     args = parser.parse_args()
 
 
-def read_bam(file_name, index_file):
+def read_bam(file_name, index_file, mismatches):
     count_mismatches = 0
     bam_file = pysam.AlignmentFile(file_name, "rb", index_filename=index_file)
-    # print(bam_file)
-
     print(bam_file.references)
     print(bam_file.lengths)
     end_pos = 0
@@ -67,45 +69,22 @@ def read_bam(file_name, index_file):
             elif 'D' in cigar_string:
                 genomic_range.mismatch_type = "Deletion"
                 get_in_del_pos(cigar_tuples, read_start, genomic_range)
-            print(genomic_range.chr_name,
-                  # read_start,
-                  genomic_range.mismatch_start,
-                  # end_pos,
-                  genomic_range.mismatch_end,
-                  # no_mismatches,
-                  genomic_range.mismatch_type,
-                  genomic_range.name,
-                  #read.cigarstring,
-                  # read.cigartuples,
-                  genomic_range.strand,
-                  sep='\t')
-        # print("start-pos after: ", read_start)
-        # if 'I' in cigar_string:
-        # print(chromosome,
-        #      read_start,
-        #      end_pos,
-        #      # no_mismatches,
-        #      mismatch_type,
-        #      # read.cigarstring,
-        #      # read.cigartuples,
-        #      strand,
-        #      sep='\t')
-        # going through cigartuple if mismatch is deletion or insertion
-        # print(read_start)
-        # for x in range(len(cigar_tuples)):
-        #    type_mismatch = cigar_tuples[x][0]
-    #     length_mismatch_match = cigar_tuples[x][1]
-    #    if type_mismatch == 0:
-    #        read_start += length_mismatch_match
-    #    elif type_mismatch == 1 or type_mismatch == 2:
-    #        break
-    # print(read_start)
+            mismatches.add_mismatch(read.query_name, genomic_range)
+            # print(genomic_range.chr_name,
+            #      # read_start,
+            #      genomic_range.mismatch_start,
+            #      # end_pos,
+            #      genomic_range.mismatch_end,
+            #      # no_mismatches,
+            #      genomic_range.mismatch_type,
+            #      genomic_range.name,
+            #      # read.cigarstring,
+            #      # read.cigartuples,
+            #      genomic_range.strand,
+            #      sep='\t')
 
-    # print(read.cigarstring)
-    # print(read.get_tags(with_value_type=True))
-    # print(0 in read.get_tag(tag="nM", with_value_type=True))
     print("total mismatches:", count_mismatches)  # different number to grep Befehl
-    # bam_file.close()
+    bam_file.close()
 
 
 """ get position of Insertion or Deletion 
@@ -141,7 +120,8 @@ def get_strand(read):
     return strand
 
 
-def MismatchFinder():
+def mismatch_finder():
+    mismatches = Mismatches()
     parse_args()
     global args
     print("args ", args)
@@ -151,8 +131,9 @@ def MismatchFinder():
         raise OSError("Could not find {}.".format(bam_file))  # doesnt work yet
 
     # with pysam.AlignmentFile(bam_file, "r") as bam:
-    read_bam(bam_file, index_file)
+    read_bam(bam_file, index_file, mismatches)
+    mismatches.create_csv()
 
 
 if __name__ == '__main__':
-    MismatchFinder()
+    mismatch_finder()
