@@ -29,7 +29,10 @@ def read_bam(file_name, index_file, mismatches):
     print(bam_file.references)
     print(bam_file.lengths)
     end_pos = 0
+    count_reads = 0
+    count_reads_with_mismatch = 0
     for read in bam_file.fetch():
+        count_reads += 1
         no_mismatches = read.get_tag(tag="nM", with_value_type=True)[0]
         mismatch_type = ""
         cigar_string = read.cigarstring
@@ -38,12 +41,11 @@ def read_bam(file_name, index_file, mismatches):
         current_pos = read.pos
         if no_mismatches == 0:
             continue
+        count_reads_with_mismatch += 1
         for mismatch in range(no_mismatches):
             genomic_range = GenomicRange()
             genomic_range.chr_name = read.reference_name
             genomic_range.strand = get_strand(read)
-            if no_mismatches == 2:
-                print(no_mismatches)
             count_mismatches += 1
             if 'I' in cigar_string:
                 genomic_range.mismatch_type = "Insertion"
@@ -54,10 +56,10 @@ def read_bam(file_name, index_file, mismatches):
                 current_pos, current_md_cigar_pos = get_in_del_pos(cigar_tuples, current_pos, genomic_range, current_md_cigar_pos)
             elif 'M' in cigar_string:
                 md_tag = read.get_tag(tag="MD", with_value_type=True)[0]
-                md_sub = re.sub(r'([\\^]*[ACGT]+)[0]*', ' \\1 ', md_tag)
-                md_split = re.split('[ ]+', md_sub)
+                md_sub = re.sub(r'([ACGT]+)', ' \\1 ', md_tag)
+                md_split = re.split(' ', md_sub)
                 genomic_range.mismatch_type = "Mismatch"
-                current_pos, current_md_cigar_pos = get_mismatch_pos(md_split, current_pos, genomic_range, current_md_cigar_pos)
+                current_pos, current_md_cigar_pos = get_mismatch_pos(md_split, current_pos, genomic_range, current_md_cigar_pos, cigar_tuples)
             mismatches.add_mismatch(read.query_name, genomic_range)
             #print(genomic_range.chr_name,
             #      read_start,
@@ -71,11 +73,15 @@ def read_bam(file_name, index_file, mismatches):
             #      # read.cigartuples,
             #      genomic_range.strand,
             #      sep='\t')
+    print("total mapped reads:", count_reads)
+    print("total mapped reads with mismatches:", count_reads_with_mismatch)
     print("total mismatches:", count_mismatches)  # different number to grep Befehl
     bam_file.close()
 
 
-def get_mismatch_pos(md_split, current_pos, genomic_range, current_md_pos):
+def get_mismatch_pos(md_split, current_pos, genomic_range, current_md_pos, cigar_tuples):
+    if cigar_tuples[0][0] == 4:
+        genomic_range.mismatch_start = current_pos
     genomic_range.mismatch_start = current_pos
     for x in range(current_md_pos, len(md_split)):
         current_md_pos += 1
