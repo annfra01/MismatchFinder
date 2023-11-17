@@ -15,10 +15,10 @@ global args
 
 
 def parse_args():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-f", "--file", dest='BAM')
-    parser.add_argument("-i", "--index", dest='INDEX')
-    parser.add_argument("-r", "--reference", dest='REF')
+    parser = argparse.ArgumentParser(prog="MismatchFinder",
+                                     description="This tool finds mismatches in genomic sequences.")
+    parser.add_argument("-f", "--file", dest='BAM', help='This file needs to be a .bam file.')
+    parser.add_argument("-i", "--index", dest='INDEX', help='This file needs to be a .bai file.')
     global args
     args = parser.parse_args()
 
@@ -33,45 +33,83 @@ def read_bam(file_name, index_file, mismatches):
     count_reads_with_mismatch = 0
     for read in bam_file.fetch():
         count_reads += 1
-        no_mismatches = read.get_tag(tag="nM", with_value_type=True)[0]
-        mismatch_type = ""
+        no_all_mismatches = read.get_tag(tag="NM", with_value_type=True)[0]
+        no_reg_mismatches = read.get_tag(tag="nM", with_value_type=True)[0]
         cigar_string = read.cigarstring
         cigar_tuples = read.cigartuples
         current_md_cigar_pos = 0
-        current_pos = read.pos
-        if no_mismatches == 0:
+        current_pos = read.reference_start  # instead of read.pos to skip soft clipping
+        has_deletion = 'D' in cigar_string
+        has_insertion = 'I' in cigar_string
+        if no_all_mismatches == 0:
             continue
         count_reads_with_mismatch += 1
-        for mismatch in range(no_mismatches):
+        if has_insertion:
+            genomic_range = GenomicRange()
+            genomic_range.chr_name = read.reference_name
+            genomic_range.strand = get_strand(read)
+            genomic_range.mismatch_type = "Insertion"
+            # length_mismatch_match = cigar_tuples[x][1]
+            get_in_del_pos(cigar_tuples, current_pos, genomic_range,
+                           current_md_cigar_pos, has_deletion)
+            mismatches.add_mismatch(read.query_name, genomic_range)
+            # print(genomic_range.chr_name,
+            #      read.query_name,
+            #      #      read_start,
+            #      genomic_range.mismatch_start,
+            #      #      # end_pos,
+            #      genomic_range.mismatch_end,
+            #      #      no_mismatches,
+            #      genomic_range.mismatch_type,
+            #      #      genomic_range.name,
+            #      read.cigarstring,
+            #      #      # read.cigartuples,
+            #      #      genomic_range.strand,
+            #      sep='\t')
+        elif has_deletion:
+            genomic_range = GenomicRange()
+            genomic_range.chr_name = read.reference_name
+            genomic_range.strand = get_strand(read)
+            genomic_range.mismatch_type = "Deletion"
+            get_in_del_pos(cigar_tuples, current_pos, genomic_range, current_md_cigar_pos, has_deletion)
+            mismatches.add_mismatch(read.query_name, genomic_range)
+            # print(genomic_range.chr_name,
+            #      read.query_name,
+            #      #      read_start,
+            #      genomic_range.mismatch_start,
+            #      #      # end_pos,
+            #      genomic_range.mismatch_end,
+            #      #      no_mismatches,
+            #      genomic_range.mismatch_type,
+            #      #      genomic_range.name,
+            #      read.cigarstring,
+            #     #      # read.cigartuples,
+            #      #      genomic_range.strand,
+            #      sep='\t')
+        for mismatch in range(no_reg_mismatches):
             genomic_range = GenomicRange()
             genomic_range.chr_name = read.reference_name
             genomic_range.strand = get_strand(read)
             count_mismatches += 1
-            if 'I' in cigar_string:
-                genomic_range.mismatch_type = "Insertion"
-                # length_mismatch_match = cigar_tuples[x][1]
-                current_pos, current_md_cigar_pos = get_in_del_pos(cigar_tuples, current_pos, genomic_range, current_md_cigar_pos)
-            elif 'D' in cigar_string:
-                genomic_range.mismatch_type = "Deletion"
-                current_pos, current_md_cigar_pos = get_in_del_pos(cigar_tuples, current_pos, genomic_range, current_md_cigar_pos)
-            elif 'M' in cigar_string:
-                md_tag = read.get_tag(tag="MD", with_value_type=True)[0]
-                md_sub = re.sub(r'([ACGT]+)', ' \\1 ', md_tag)
-                md_split = re.split(' ', md_sub)
-                genomic_range.mismatch_type = "Mismatch"
-                current_pos, current_md_cigar_pos = get_mismatch_pos(md_split, current_pos, genomic_range, current_md_cigar_pos, cigar_tuples)
+            md_tag = read.get_tag(tag="MD", with_value_type=True)[0]
+            md_sub = re.sub(r'([ACGT]+)', ' \\1 ', md_tag)
+            md_split = re.split(' ', md_sub)
+            genomic_range.mismatch_type = "Mismatch"
+            current_pos, current_md_cigar_pos = get_mismatch_pos(md_split, current_pos, genomic_range,
+                                                                 current_md_cigar_pos, cigar_tuples)
             mismatches.add_mismatch(read.query_name, genomic_range)
-            #print(genomic_range.chr_name,
-            #      read_start,
+            # print(genomic_range.chr_name,
+            #      read.query_name,
+            #      #      read_start,
             #      genomic_range.mismatch_start,
-            #      # end_pos,
+            #      #      # end_pos,
             #      genomic_range.mismatch_end,
-            #      no_mismatches,
+            #      #      no_mismatches,
             #      genomic_range.mismatch_type,
-            #      genomic_range.name,
+            #      #      genomic_range.name,
             #      read.cigarstring,
-            #      # read.cigartuples,
-            #      genomic_range.strand,
+            #      #      # read.cigartuples,
+            #      #      genomic_range.strand,
             #      sep='\t')
     print("total mapped reads:", count_reads)
     print("total mapped reads with mismatches:", count_reads_with_mismatch)
@@ -80,18 +118,29 @@ def read_bam(file_name, index_file, mismatches):
 
 
 def get_mismatch_pos(md_split, current_pos, genomic_range, current_md_pos, cigar_tuples):
-    if cigar_tuples[0][0] == 4:
-        genomic_range.mismatch_start = current_pos
+    current_cigar_pos = current_pos
+    current_cigar_pos += cigar_tuples[0][1]
+    current_cigar_pos_count = 0
+    # if cigar_tuples[0][0] == 4:
+    #    genomic_range.mismatch_start = current_pos
     genomic_range.mismatch_start = current_pos
     for x in range(current_md_pos, len(md_split)):
         current_md_pos += 1
         # print(md_split[x])
         current_element = md_split[x]
-        if not current_element.isdigit():
+        current_element = current_element.split("^")[0]
+        # print(current_element)
+        if not current_element.isdigit() and len(current_element) == 1:
             genomic_range.mismatch_start += 1
             break
+        elif not current_element.isdigit() and len(current_element) > 1:
+            genomic_range.mismatch_start += len(current_element)
         else:
             genomic_range.mismatch_start += int(current_element)
+            if current_cigar_pos < genomic_range.mismatch_start:
+                current_cigar_pos_count += 1
+                if cigar_tuples[current_cigar_pos_count][0] == 3:
+                    genomic_range.mismatch_start += cigar_tuples[current_cigar_pos_count][1]
     genomic_range.mismatch_end = genomic_range.mismatch_start + 1
     return genomic_range.mismatch_start, current_md_pos
 
@@ -102,7 +151,7 @@ def get_mismatch_pos(md_split, current_pos, genomic_range, current_md_pos, cigar
 """
 
 
-def get_in_del_pos(cigar_tuples, read_start, genomic_range, current_cigar_pos):
+def get_in_del_pos(cigar_tuples, read_start, genomic_range, current_cigar_pos, has_deletion):
     for x in range(current_cigar_pos, len(cigar_tuples)):
         current_cigar_pos += 1
         type_mismatch_cigar = cigar_tuples[x][0]
@@ -110,10 +159,11 @@ def get_in_del_pos(cigar_tuples, read_start, genomic_range, current_cigar_pos):
         if type_mismatch_cigar != 1 and type_mismatch_cigar != 2:
             genomic_range.mismatch_start = read_start + length_mismatch_match
         elif type_mismatch_cigar == 1 or type_mismatch_cigar == 2:
-            genomic_range.mismatch_start += 1
+            if has_deletion:
+                genomic_range.mismatch_start += 1
             break
-    genomic_range.mismatch_end = genomic_range.mismatch_start + 1
-    return genomic_range.mismatch_start, current_cigar_pos
+    genomic_range.mismatch_end = genomic_range.mismatch_start + length_mismatch_match
+    # return genomic_range.mismatch_start, current_cigar_pos
 
 
 """ get direction of read; if flag in SAM file is 0, then forward strand
