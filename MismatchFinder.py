@@ -5,12 +5,9 @@ import pysam
 from GenomicRange import GenomicRange
 from Mismatches import Mismatches
 
-# Press Umschalt+F10 to execute it or replace it with your code.
-# Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
-
 global args
 
-""" get arguments from command line
+""" gets arguments (bam file and index file) from command line
 """
 
 
@@ -23,12 +20,14 @@ def parse_args():
     args = parser.parse_args()
 
 
-def read_bam(file_name, index_file, mismatches):
+""" reads bam-file and finds all mismatches 
+    :arg    bam-file, index-file, object Mismatches
+"""
+
+
+def find_mismatches(file_name, index_file, mismatches):
     count_mismatches = 0
     bam_file = pysam.AlignmentFile(file_name, "rb", index_filename=index_file)
-    print(bam_file.references)
-    print(bam_file.lengths)
-    end_pos = 0
     count_reads = 0
     count_reads_with_mismatch = 0
     for read in bam_file.fetch():
@@ -45,9 +44,8 @@ def read_bam(file_name, index_file, mismatches):
             continue
         count_reads_with_mismatch += 1
         if has_insertion:
-            genomic_range = GenomicRange()
-            genomic_range.chr_name = read.reference_name
-            genomic_range.strand = get_strand(read)
+            count_mismatches += 1
+            genomic_range = create_genomic_range(read)
             genomic_range.mismatch_type = "Insertion"
             # length_mismatch_match = cigar_tuples[x][1]
             get_in_del_pos(cigar_tuples, current_pos, genomic_range,
@@ -67,9 +65,8 @@ def read_bam(file_name, index_file, mismatches):
             #      #      genomic_range.strand,
             #      sep='\t')
         elif has_deletion:
-            genomic_range = GenomicRange()
-            genomic_range.chr_name = read.reference_name
-            genomic_range.strand = get_strand(read)
+            count_mismatches += 1
+            genomic_range = create_genomic_range(read)
             genomic_range.mismatch_type = "Deletion"
             get_in_del_pos(cigar_tuples, current_pos, genomic_range, current_md_cigar_pos, has_deletion)
             mismatches.add_mismatch(read.query_name, genomic_range)
@@ -87,14 +84,12 @@ def read_bam(file_name, index_file, mismatches):
             #      #      genomic_range.strand,
             #      sep='\t')
         for mismatch in range(no_reg_mismatches):
-            genomic_range = GenomicRange()
-            genomic_range.chr_name = read.reference_name
-            genomic_range.strand = get_strand(read)
+            genomic_range = create_genomic_range(read)
+            genomic_range.mismatch_type = "Mismatch"
             count_mismatches += 1
             md_tag = read.get_tag(tag="MD", with_value_type=True)[0]
             md_sub = re.sub(r'([ACGT]+)', ' \\1 ', md_tag)
             md_split = re.split(' ', md_sub)
-            genomic_range.mismatch_type = "Mismatch"
             current_pos, current_md_cigar_pos = get_mismatch_pos(md_split, current_pos, genomic_range,
                                                                  current_md_cigar_pos, cigar_tuples)
             mismatches.add_mismatch(read.query_name, genomic_range)
@@ -117,6 +112,24 @@ def read_bam(file_name, index_file, mismatches):
     bam_file.close()
 
 
+""" creates new GenomicRange object
+"""
+
+
+def create_genomic_range(read):
+    genomic_range = GenomicRange()
+    genomic_range.chr_name = read.reference_name
+    genomic_range.strand = get_strand(read)
+    return genomic_range
+
+
+""" gets regular mismatch position
+    :arg    MD-tag splitted, current position in reference, genomic range object, current position
+            in MD-tag, cigar tuple
+    :returns mismatch start as new current position in reference, current position in MD-tag
+"""
+
+
 def get_mismatch_pos(md_split, current_pos, genomic_range, current_md_pos, cigar_tuples):
     current_cigar_pos = current_pos
     current_cigar_pos += cigar_tuples[0][1]
@@ -129,6 +142,7 @@ def get_mismatch_pos(md_split, current_pos, genomic_range, current_md_pos, cigar
         # print(md_split[x])
         current_element = md_split[x]
         current_element = current_element.split("^")[0]
+        #
         # print(current_element)
         if not current_element.isdigit() and len(current_element) == 1:
             genomic_range.mismatch_start += 1
@@ -145,9 +159,9 @@ def get_mismatch_pos(md_split, current_pos, genomic_range, current_md_pos, cigar
     return genomic_range.mismatch_start, current_md_pos
 
 
-""" get position of Insertion or Deletion 
-    Args: cigar tuples, start position of read
-    Returns: start and end postion of Insertion or Deletion
+""" gets position of Insertion or Deletion 
+    :arg cigar tuples, start position of read
+    :returns start and end postion of Insertion or Deletion
 """
 
 
@@ -168,8 +182,8 @@ def get_in_del_pos(cigar_tuples, read_start, genomic_range, current_cigar_pos, h
 
 """ get direction of read; if flag in SAM file is 0, then forward strand
                            if flag in SAM file is 16, then reverse strand
-    Args: current read
-    Returns: read direction (+ or -)
+    :arg current read
+    :returns read direction (+ or -)
 """
 
 
@@ -186,14 +200,11 @@ def mismatch_finder():
     mismatches = Mismatches()
     parse_args()
     global args
-    print("args ", args)
     bam_file = args.BAM
     index_file = args.INDEX
     if not os.path.exists(bam_file):
         raise OSError("Could not find {}.".format(bam_file))  # doesnt work yet
-
-    # with pysam.AlignmentFile(bam_file, "r") as bam:
-    read_bam(bam_file, index_file, mismatches)
+    find_mismatches(bam_file, index_file, mismatches)
     mismatches.create_csv()
 
 
