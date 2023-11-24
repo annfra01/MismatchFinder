@@ -1,5 +1,5 @@
 # MismatchFinder
-A tool to find variants (regular mismatches, insertions, deletions) in genomic sequences.
+A tool to find variants (mismatched base pairs, insertions, deletions) in genomic sequences.
 
 ## Getting started 
 These instructions will help you copy the project to run it on your local machine.
@@ -39,9 +39,12 @@ samtools index file.bam file.bam.bai
 ```
 ### Output
 The tool will output:
-1. a .bed file with 6 columns. The columns are: chromosome, start position of mismatch, end position of mismatch, type of mismatch (regular mismatch, insertion, deletion), a dot as a placeholder, the direction of the read (- is reverse, + is forward).  
+1. a .bed file with 6 columns. The columns are: chromosome, start position of mismatch, end position of mismatch, type of mismatch (regular mismatch, insertion, deletion), a dot as a placeholder, the direction of the read (- is reverse, + is forward). It looks like this:
+   
+   <img src="/example_bed.png" height="150">
 
-   ![Example of the .bed-file output](/bed_output_example.png)
+3. statistics using the standard output which looks like this:
 
-2. a statistics using the standard output which looks like this:
+   <img src="/example_statistics.png" height="150">
+
    
