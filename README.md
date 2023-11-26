@@ -27,7 +27,7 @@ pip3 install -r requirements.txt
 ## How to use the tool
 You can start the tool by using this command:
 ```
-python3 MismatchFinder.py -f file.bam -i file.bam.bai
+python3 MismatchFinder.py -f example.bam -i example.bam.bai
 ```
 
 ### Input parameters
@@ -35,15 +35,15 @@ python3 MismatchFinder.py -f file.bam -i file.bam.bai
 + -i : A .bai file. It should be generated beforehand using the following command:
 
 ```
-samtools index file.bam file.bam.bai
+samtools index example.bam example.bam.bai
 ```
 ### Output
 The tool will output:
-1. a .bed file with 6 columns. The columns are: chromosome, start position of mismatch, end position of mismatch, type of mismatch (regular mismatch, insertion, deletion), a dot as a placeholder, the direction of the read (- is reverse, + is forward). It looks like this:
+1. a .bed file with 6 columns. The columns are: chromosome, start position of mismatch, end position of mismatch, type of mismatch (regular mismatch, insertion, deletion), a dot as a placeholder, the direction of the read (- is reverse, + is forward). The .bed output file for example.bam looks like this:
    
    <img src="/example_bed.png" height="150">
 
-3. statistics using the standard output which looks like this:
+3. statistics using the standard output. The statistics for the example.bam looks like this:
 
    <img src="/example_statistics.png" height="150">
 
