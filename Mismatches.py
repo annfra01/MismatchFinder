@@ -34,4 +34,4 @@ class Mismatches:
 
     def create_csv_from_list(self):
         mismatches_data_frame = pandas.DataFrame(self.dict_to_list())
-        mismatches_data_frame.to_csv('example.bed', index=False, sep='\t', header=False)
+        mismatches_data_frame.to_csv('mismatches.bed', index=False, sep='\t', header=False)
