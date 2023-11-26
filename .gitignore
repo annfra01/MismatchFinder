@@ -3,3 +3,7 @@
 *.bai
 __pycache__/
 *.bed
+!example.bed
+!example.bam
+!example.bam.bai
+*.sam
