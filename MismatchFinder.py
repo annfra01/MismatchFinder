@@ -30,6 +30,8 @@ def find_mismatches(file_name, index_file, mismatches):
     bam_file = pysam.AlignmentFile(file_name, "rb", index_filename=index_file)
     count_reads = 0
     count_reads_with_mismatch = 0
+    count_insertions = 0
+    count_deletions = 0
     for read in bam_file.fetch():
         count_reads += 1
         no_all_mismatches = read.get_tag(tag="NM", with_value_type=True)[0]
@@ -37,52 +39,27 @@ def find_mismatches(file_name, index_file, mismatches):
         cigar_string = read.cigarstring
         cigar_tuples = read.cigartuples
         current_md_cigar_pos = 0
-        current_pos = read.reference_start  # instead of read.pos to skip soft clipping
+        current_pos = read.reference_start
         has_deletion = 'D' in cigar_string
         has_insertion = 'I' in cigar_string
         if no_all_mismatches == 0:
             continue
         count_reads_with_mismatch += 1
         if has_insertion:
+            count_insertions += 1
             count_mismatches += 1
             genomic_range = create_genomic_range(read)
             genomic_range.mismatch_type = "Insertion"
-            # length_mismatch_match = cigar_tuples[x][1]
             get_in_del_pos(cigar_tuples, current_pos, genomic_range,
                            current_md_cigar_pos, has_deletion)
             mismatches.add_mismatch(read.query_name, genomic_range)
-            # print(genomic_range.chr_name,
-            #      read.query_name,
-            #      #      read_start,
-            #      genomic_range.mismatch_start,
-            #      #      # end_pos,
-            #      genomic_range.mismatch_end,
-            #      #      no_mismatches,
-            #      genomic_range.mismatch_type,
-            #      #      genomic_range.name,
-            #      read.cigarstring,
-            #      #      # read.cigartuples,
-            #      #      genomic_range.strand,
-            #      sep='\t')
         elif has_deletion:
+            count_deletions += 1
             count_mismatches += 1
             genomic_range = create_genomic_range(read)
             genomic_range.mismatch_type = "Deletion"
             get_in_del_pos(cigar_tuples, current_pos, genomic_range, current_md_cigar_pos, has_deletion)
             mismatches.add_mismatch(read.query_name, genomic_range)
-            # print(genomic_range.chr_name,
-            #      read.query_name,
-            #      #      read_start,
-            #      genomic_range.mismatch_start,
-            #      #      # end_pos,
-            #      genomic_range.mismatch_end,
-            #      #      no_mismatches,
-            #      genomic_range.mismatch_type,
-            #      #      genomic_range.name,
-            #      read.cigarstring,
-            #     #      # read.cigartuples,
-            #      #      genomic_range.strand,
-            #      sep='\t')
         for mismatch in range(no_reg_mismatches):
             genomic_range = create_genomic_range(read)
             genomic_range.mismatch_type = "Mismatch"
@@ -93,22 +70,13 @@ def find_mismatches(file_name, index_file, mismatches):
             current_pos, current_md_cigar_pos = get_mismatch_pos(md_split, current_pos, genomic_range,
                                                                  current_md_cigar_pos, cigar_tuples)
             mismatches.add_mismatch(read.query_name, genomic_range)
-            # print(genomic_range.chr_name,
-            #      read.query_name,
-            #      #      read_start,
-            #      genomic_range.mismatch_start,
-            #      #      # end_pos,
-            #      genomic_range.mismatch_end,
-            #      #      no_mismatches,
-            #      genomic_range.mismatch_type,
-            #      #      genomic_range.name,
-            #      read.cigarstring,
-            #      #      # read.cigartuples,
-            #      #      genomic_range.strand,
-            #      sep='\t')
-    print("total mapped reads:", count_reads)
-    print("total mapped reads with mismatches:", count_reads_with_mismatch)
-    print("total mismatches:", count_mismatches)  # different number to grep Befehl
+    print("total number of mapped reads:", count_reads)
+    print("total number of mapped reads with mismatches:", count_reads_with_mismatch)
+    print("total number of mismatches:", count_mismatches)
+    print("")
+    print("total number of insertions:", count_insertions)
+    print("total number of deletions:", count_deletions)
+    print("total number of mismatched base pairs:", count_mismatches - (count_deletions + count_insertions))
     bam_file.close()
 
 
@@ -134,16 +102,11 @@ def get_mismatch_pos(md_split, current_pos, genomic_range, current_md_pos, cigar
     current_cigar_pos = current_pos
     current_cigar_pos += cigar_tuples[0][1]
     current_cigar_pos_count = 0
-    # if cigar_tuples[0][0] == 4:
-    #    genomic_range.mismatch_start = current_pos
     genomic_range.mismatch_start = current_pos
     for x in range(current_md_pos, len(md_split)):
         current_md_pos += 1
-        # print(md_split[x])
         current_element = md_split[x]
         current_element = current_element.split("^")[0]
-        #
-        # print(current_element)
         if not current_element.isdigit() and len(current_element) == 1:
             genomic_range.mismatch_start += 1
             break
@@ -177,7 +140,6 @@ def get_in_del_pos(cigar_tuples, read_start, genomic_range, current_cigar_pos, h
                 genomic_range.mismatch_start += 1
             break
     genomic_range.mismatch_end = genomic_range.mismatch_start + length_mismatch_match
-    # return genomic_range.mismatch_start, current_cigar_pos
 
 
 """ get direction of read; if flag in SAM file is 0, then forward strand
@@ -188,7 +150,7 @@ def get_in_del_pos(cigar_tuples, read_start, genomic_range, current_cigar_pos, h
 
 
 def get_strand(read):
-    strand_flag = read.flag  # is_forward oder is_reverse gibts auch
+    strand_flag = read.flag
     if strand_flag == 0:
         strand = "+"
     else:
@@ -203,9 +165,9 @@ def mismatch_finder():
     bam_file = args.BAM
     index_file = args.INDEX
     if not os.path.exists(bam_file):
-        raise OSError("Could not find {}.".format(bam_file))  # doesnt work yet
+        raise OSError("Could not find {}.".format(bam_file))
     find_mismatches(bam_file, index_file, mismatches)
-    mismatches.create_csv()
+    mismatches.create_csv_from_list()
 
 
 if __name__ == '__main__':
