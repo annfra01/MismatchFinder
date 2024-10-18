@@ -39,7 +39,7 @@ def find_mismatches(file_name, index_file, mismatches):
         cigar_string = read.cigarstring
         cigar_tuples = read.cigartuples
         current_md_cigar_pos = 0
-        current_pos = read.reference_start
+        current_pos = read.reference_start - 1
         has_deletion = 'D' in cigar_string
         has_insertion = 'I' in cigar_string
         if no_all_mismatches == 0:
