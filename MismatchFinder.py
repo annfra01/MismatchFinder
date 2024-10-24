@@ -62,7 +62,7 @@ def find_mismatches(file_name, index_file, mismatches):
             mismatches.add_mismatch(read.query_name, genomic_range)
         for mismatch in range(no_reg_mismatches):
             genomic_range = create_genomic_range(read)
-            genomic_range.mismatch_type = "Mismatch"
+            genomic_range.mismatch_type = "Substitution"
             count_mismatches += 1
             md_tag = read.get_tag(tag="MD", with_value_type=True)[0]
             md_sub = re.sub(r'([ACGT]+)', ' \\1 ', md_tag)
