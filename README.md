@@ -39,7 +39,7 @@ samtools index example.bam example.bam.bai
 ```
 ### Output
 The tool will output:
-1. a .bed file with 6 columns. The columns are: chromosome, start position of mismatch, end position of mismatch, type of mismatch (regular mismatch, insertion, deletion), a dot as a placeholder, the direction of the read (- is reverse, + is forward). The .bed output file for example.bam looks like this:
+1. a .bed file mismatches.bed with 6 columns. The columns are: chromosome, start position of mismatch, end position of mismatch, type of mismatch (regular mismatch, insertion, deletion), a dot as a placeholder, the direction of the read (- is reverse, + is forward). The .bed output file for example.bam looks like this:
    
    <img src="/example_bed.png" height="150">
 
