@@ -76,7 +76,7 @@ def find_mismatches(file_name, index_file, mismatches):
     print("")
     print("total number of insertions:", count_insertions)
     print("total number of deletions:", count_deletions)
-    print("total number of mismatched base pairs:", count_mismatches - (count_deletions + count_insertions))
+    print("total number of substitutions:", count_mismatches - (count_deletions + count_insertions))
     bam_file.close()
 
 
